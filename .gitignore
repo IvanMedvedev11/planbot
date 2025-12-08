@@ -1,2 +1,3 @@
 database.db
 conf.py
+__pycache__/*
