@@ -20,9 +20,9 @@ def hello_message(message):
     cursor.execute('''INSERT INTO Users(user_id) VALUES (?)''', (id,))
     connection.commit()
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
-@bot.message_handler(commands=['/help'])
+@bot.message_handler(commands=['help'])
 def help_message(message):
-     pass
+     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через пробел> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана")
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
