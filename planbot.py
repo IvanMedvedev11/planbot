@@ -22,7 +22,16 @@ def hello_message(message):
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
 @bot.message_handler(commands=['help'])
 def help_message(message):
-     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через пробел> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана")
+     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит невыполненные задания плана")
+@bot.message_handler(commands=['create_plan'])
+def create_plan(message):
+     tasks = message.text[13:]
+     cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
+     connection.commit()
+     bot.send_message(message.chat.id, "План успешно создан")
+@bot.message_handler(commands=['print_plan'])
+def print_plan(message):
+     pass
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
