@@ -22,31 +22,84 @@ def hello_message(message):
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
 @bot.message_handler(commands=['help'])
 def help_message(message):
-     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит невыполненные задания плана")
+    bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план")
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
-     tasks = message.text[13:]
-     cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
-     connection.commit()
-     bot.send_message(message.chat.id, "План успешно создан")
+    tasks = message.text[13:]
+    cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
+    connection.commit()
+    bot.send_message(message.chat.id, "План успешно создан")
 @bot.message_handler(commands=["add_task"])
 def add_task(message):
-     cursor.execute('''SELECT DISTINCT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
-     executed = cursor.fetchone()
-     active_tasks = executed[0].split(', ')
-     plan = executed[1].split(', ')
-     text = message.text[10:]
-     plan.append(text)
-     active_tasks.append(text)
-     cursor.execute('''UPDATE Users SET active_tasks = ?, plan = ? WHERE user_id = ?''', (', '.join(active_tasks), ', '.join(plan), message.from_user.id))
-     connection.commit()
-     bot.send_message(message.chat.id, "Пункт успешно добавлен")
-
+    cursor.execute('''SELECT DISTINCT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    executed = cursor.fetchone()
+    try:
+        plan = executed[1].split(', ')
+        if executed[0] is None:
+            active_tasks = []
+        else:
+            active_tasks = executed[0].split(', ')
+        text = message.text[10:]
+        plan.append(text)
+        active_tasks.append(text)
+        cursor.execute('''UPDATE Users SET active_tasks = ?, plan = ? WHERE user_id = ?''', (', '.join(active_tasks), ', '.join(plan), message.from_user.id))
+        connection.commit()
+        bot.send_message(message.chat.id, "Пункт успешно добавлен")
+    except AttributeError:
+        bot.send_message(message.chat.id, "План не создан")
+@bot.message_handler(commands=['complete_task'])
+def complete_task(message):
+    cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    executed = cursor.fetchone()
+    if executed[0] is None:
+        completed_tasks = []
+    else:
+        completed_tasks = executed[0].split(', ')
+    if executed[1] is None:
+        active_tasks = []
+    else:
+        active_tasks = executed[1].split(', ')
+    task = message.text[15:]
+    completed_tasks.append(task)
+    active_tasks.remove(task)
+    cursor.execute('''UPDATE Users SET completed_tasks = ?, active_tasks = ? WHERE user_id = ?''', (', '.join(completed_tasks), ', '.join(active_tasks), message.from_user.id))
+    connection.commit()
+    bot.send_message(message.chat.id, "Пункт успешно зачтен")
+@bot.message_handler(commands=['delete_task'])
+def delete_task(message):
+    cursor.execute('''SELECT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    executed = cursor.fetchone()
+    if executed[0] is None:
+        plan = []
+    else:
+        plan = executed[0].split(', ')
+    if executed[1] is None:
+        active_tasks = []
+    else:
+        active_tasks = executed[1].split(', ')
+    task = message.text[13:]
+    plan.remove(task)
+    active_tasks.remove(task)
+    cursor.execute('''UPDATE Users SET plan = ?, active_tasks = ? WHERE user_id = ?''', (', '.join(plan), ', '.join(active_tasks), message.from_user.id))
+    connection.commit()
+    bot.send_message(message.chat.id, "Пункт успешно удален")
 @bot.message_handler(commands=['print_plan'])
 def print_plan(message):
-     cursor.execute('''SELECT active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
-     plan = '\n'.join(cursor.fetchone()[0].split(', '))
-     bot.send_message(message.chat.id, plan)
+     cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+     executed = cursor.fetchone()
+     text = 'Невыполнено:\n'
+     if executed[1] is None:
+          active_tasks = ""
+     else:
+        active_tasks = '\n'.join(executed[1].split(', '))
+     text += active_tasks + '\n'
+     text += 'Выполнено:\n'
+     if executed[0] is None:
+        completed_tasks = ""
+     else:
+        completed_tasks = '\n'.join(executed[0].split(', '))
+     text += completed_tasks + '\n'
+     bot.send_message(message.chat.id, text)
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
