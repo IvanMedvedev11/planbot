@@ -26,12 +26,27 @@ def help_message(message):
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
      tasks = message.text[13:]
-     cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
+     cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
      connection.commit()
      bot.send_message(message.chat.id, "План успешно создан")
+@bot.message_handler(commands=["add_task"])
+def add_task(message):
+     cursor.execute('''SELECT DISTINCT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
+     executed = cursor.fetchone()
+     active_tasks = executed[0].split(', ')
+     plan = executed[1].split(', ')
+     text = message.text[10:]
+     plan.append(text)
+     active_tasks.append(text)
+     cursor.execute('''UPDATE Users SET active_tasks = ?, plan = ? WHERE user_id = ?''', (', '.join(active_tasks), ', '.join(plan), message.from_user.id))
+     connection.commit()
+     bot.send_message(message.chat.id, "Пункт успешно добавлен")
+
 @bot.message_handler(commands=['print_plan'])
 def print_plan(message):
-     pass
+     cursor.execute('''SELECT active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+     plan = '\n'.join(cursor.fetchone()[0].split(', '))
+     bot.send_message(message.chat.id, plan)
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
