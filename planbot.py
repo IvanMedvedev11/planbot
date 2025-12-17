@@ -10,14 +10,18 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Users (
                user_id INTEGER,
                completed_tasks TEXT,
                active_tasks TEXT,
-               plan TEXT
+               plan TEXT,
+               completed_plans INTEGER DEFAULT 0,
+               username TEXT
 )''')
 connection.commit()
 
 @bot.message_handler(commands=['start'])
 def hello_message(message):
+    print(message)
     id = message.from_user.id
-    cursor.execute('''INSERT INTO Users(user_id) VALUES (?)''', (id,))
+    username = '@' + message.from_user.username
+    cursor.execute('''INSERT INTO Users(user_id, username) VALUES (?, ?)''', (id, username))
     connection.commit()
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
 @bot.message_handler(commands=['help'])
@@ -26,7 +30,12 @@ def help_message(message):
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
     tasks = message.text[13:]
-    cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ? WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
+    cursor.execute('''SELECT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    executed = cursor.fetchone()
+    if not executed[0] and executed[1]:
+        cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ?, completed_plans = completed_plans + 1 WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
+    else:
+        cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ?, completed_plans = completed_plans WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
     connection.commit()
     bot.send_message(message.chat.id, "План успешно создан")
 @bot.message_handler(commands=["add_task"])
@@ -91,13 +100,13 @@ def print_plan(message):
      if executed[1] is None:
           active_tasks = ""
      else:
-        active_tasks = '\n'.join(executed[1].split(', '))
+        active_tasks = '- ' + '\n- '.join(executed[1].split(', '))
      text += active_tasks + '\n'
      text += 'Выполнено:\n'
      if executed[0] is None:
         completed_tasks = ""
      else:
-        completed_tasks = '\n'.join(executed[0].split(', '))
+        completed_tasks = '- ' + '\n- '.join(executed[0].split(', '))
      text += completed_tasks + '\n'
      bot.send_message(message.chat.id, text)
 try:
