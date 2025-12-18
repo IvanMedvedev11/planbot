@@ -26,7 +26,7 @@ def hello_message(message):
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
 @bot.message_handler(commands=['help'])
 def help_message(message):
-    bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план")
+    bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план\n/plans - Выводит кол-во выполненных вами планов\n/top10 - Выводит топ-10 по кол-ву выполненных планов")
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
     tasks = message.text[13:]
@@ -109,6 +109,14 @@ def print_plan(message):
         completed_tasks = '- ' + '\n- '.join(executed[0].split(', '))
      text += completed_tasks + '\n'
      bot.send_message(message.chat.id, text)
+@bot.message_handler(commands=['plans'])
+def plans(message):
+    cursor.execute('''SELECT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cnt = cursor.fetchone()[0]
+    bot.send_message(message.chat.id, f"Кол-во выполненных планов: {cnt}")
+@bot.message_handler(commands=['top10'])
+def top10(message):
+    bot.send_message(message.chat.id, "Данная функция находится в разработке")
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
