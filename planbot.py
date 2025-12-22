@@ -27,6 +27,23 @@ def hello_message(message):
 @bot.message_handler(commands=['help'])
 def help_message(message):
     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план\n/plans - Выводит кол-во выполненных вами планов\n/top10 - Выводит топ-10 по кол-ву выполненных планов")
+@bot.message_handler(commands=['print_plan'])
+def print_plan(message):
+     cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+     executed = cursor.fetchone()
+     text = 'Невыполнено:\n'
+     if executed[1] is None:
+          active_tasks = ""
+     else:
+        active_tasks = '- ' + '\n- '.join(executed[1].split(', '))
+     text += active_tasks + '\n'
+     text += 'Выполнено:\n'
+     if executed[0] is None:
+        completed_tasks = ""
+     else:
+        completed_tasks = '- ' + '\n- '.join(executed[0].split(', '))
+     text += completed_tasks + '\n'
+     bot.send_message(message.chat.id, text)
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
     tasks = message.text[13:]
@@ -38,6 +55,7 @@ def create_plan(message):
         cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ?, completed_plans = completed_plans WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
     connection.commit()
     bot.send_message(message.chat.id, "План успешно создан")
+    print_plan(message)
 @bot.message_handler(commands=["add_task"])
 def add_task(message):
     cursor.execute('''SELECT DISTINCT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
@@ -56,6 +74,7 @@ def add_task(message):
         bot.send_message(message.chat.id, "Пункт успешно добавлен")
     except AttributeError:
         bot.send_message(message.chat.id, "План не создан")
+    print_plan(message)
 @bot.message_handler(commands=['complete_task'])
 def complete_task(message):
     cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
@@ -74,6 +93,7 @@ def complete_task(message):
     cursor.execute('''UPDATE Users SET completed_tasks = ?, active_tasks = ? WHERE user_id = ?''', (', '.join(completed_tasks), ', '.join(active_tasks), message.from_user.id))
     connection.commit()
     bot.send_message(message.chat.id, "Пункт успешно зачтен")
+    print_plan(message)
 @bot.message_handler(commands=['delete_task'])
 def delete_task(message):
     cursor.execute('''SELECT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
@@ -92,23 +112,7 @@ def delete_task(message):
     cursor.execute('''UPDATE Users SET plan = ?, active_tasks = ? WHERE user_id = ?''', (', '.join(plan), ', '.join(active_tasks), message.from_user.id))
     connection.commit()
     bot.send_message(message.chat.id, "Пункт успешно удален")
-@bot.message_handler(commands=['print_plan'])
-def print_plan(message):
-     cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
-     executed = cursor.fetchone()
-     text = 'Невыполнено:\n'
-     if executed[1] is None:
-          active_tasks = ""
-     else:
-        active_tasks = '- ' + '\n- '.join(executed[1].split(', '))
-     text += active_tasks + '\n'
-     text += 'Выполнено:\n'
-     if executed[0] is None:
-        completed_tasks = ""
-     else:
-        completed_tasks = '- ' + '\n- '.join(executed[0].split(', '))
-     text += completed_tasks + '\n'
-     bot.send_message(message.chat.id, text)
+    print_plan(message)
 @bot.message_handler(commands=['plans'])
 def plans(message):
     cursor.execute('''SELECT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
