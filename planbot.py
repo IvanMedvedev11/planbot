@@ -96,7 +96,7 @@ def complete_task(message):
     print_plan(message)
 @bot.message_handler(commands=['delete_task'])
 def delete_task(message):
-    cursor.execute('''SELECT DISCTINCT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISTINCT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
     executed = cursor.fetchone()
     if executed[0] is None:
         plan = []
@@ -115,14 +115,19 @@ def delete_task(message):
     print_plan(message)
 @bot.message_handler(commands=['plans'])
 def plans(message):
-    cursor.execute('''SELECT DISCTINCT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISTINCT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
     cnt = cursor.fetchone()[0]
     bot.send_message(message.chat.id, f"Кол-во выполненных планов: {cnt}")
 @bot.message_handler(commands=['top10'])
 def top10(message):
     cursor.execute('''SELECT DISTINCT username, completed_plans FROM Users ORDER BY completed_plans DESC LIMIT 10''')
     executed = cursor.fetchall()
-    print(executed)
+    ans = "Топ 10:\n"
+    cnt = 1
+    for user in executed:
+        ans += str(cnt) + '. ' + user[0] + ' - ' + str(user[1]) + '\n'
+        cnt += 1
+    bot.send_message(message.chat.id, ans)
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
