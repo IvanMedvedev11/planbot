@@ -29,7 +29,7 @@ def help_message(message):
     bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план\n/plans - Выводит кол-во выполненных вами планов\n/top10 - Выводит топ-10 по кол-ву выполненных планов")
 @bot.message_handler(commands=['print_plan'])
 def print_plan(message):
-     cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+     cursor.execute('''SELECT DISTINCT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
      executed = cursor.fetchone()
      text = 'Невыполнено:\n'
      if executed[1] is None:
@@ -47,7 +47,7 @@ def print_plan(message):
 @bot.message_handler(commands=['create_plan'])
 def create_plan(message):
     tasks = message.text[13:]
-    cursor.execute('''SELECT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISTINCT active_tasks, plan FROM Users WHERE user_id = ?''', (message.from_user.id,))
     executed = cursor.fetchone()
     if not executed[0] and executed[1]:
         cursor.execute('''UPDATE Users SET completed_tasks = NULL, active_tasks = ?, plan = ?, completed_plans = completed_plans + 1 WHERE user_id = ?''', (tasks, tasks, message.from_user.id))
@@ -77,7 +77,7 @@ def add_task(message):
     print_plan(message)
 @bot.message_handler(commands=['complete_task'])
 def complete_task(message):
-    cursor.execute('''SELECT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISTINCT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
     executed = cursor.fetchone()
     if executed[0] is None:
         completed_tasks = []
@@ -96,7 +96,7 @@ def complete_task(message):
     print_plan(message)
 @bot.message_handler(commands=['delete_task'])
 def delete_task(message):
-    cursor.execute('''SELECT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISCTINCT plan, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
     executed = cursor.fetchone()
     if executed[0] is None:
         plan = []
@@ -115,12 +115,14 @@ def delete_task(message):
     print_plan(message)
 @bot.message_handler(commands=['plans'])
 def plans(message):
-    cursor.execute('''SELECT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
+    cursor.execute('''SELECT DISCTINCT completed_plans FROM Users WHERE user_id = ?''', (message.from_user.id,))
     cnt = cursor.fetchone()[0]
     bot.send_message(message.chat.id, f"Кол-во выполненных планов: {cnt}")
 @bot.message_handler(commands=['top10'])
 def top10(message):
-    bot.send_message(message.chat.id, "Данная функция находится в разработке")
+    cursor.execute('''SELECT DISTINCT username, completed_plans FROM Users ORDER BY completed_plans DESC LIMIT 10''')
+    executed = cursor.fetchall()
+    print(executed)
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
