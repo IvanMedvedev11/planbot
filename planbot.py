@@ -1,6 +1,6 @@
 import telebot
 import sqlite3
-from conf import TOKEN
+from conf import TOKEN, USER_ID
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -14,6 +14,10 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Users (
                completed_plans INTEGER DEFAULT 0,
                username TEXT
 )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS Reviews (
+               username TEXT,
+               review TEXT
+)''')
 connection.commit()
 
 @bot.message_handler(commands=['start'])
@@ -26,7 +30,7 @@ def hello_message(message):
     bot.send_message(message.chat.id, "Привет, я бот-планировщик дел. Чтобы получить информацию по командам, используйте /help")
 @bot.message_handler(commands=['help'])
 def help_message(message):
-    bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план\n/plans - Выводит кол-во выполненных вами планов\n/top10 - Выводит топ-10 по кол-ву выполненных планов")
+    bot.send_message(message.chat.id, "/help - Выводит список команд\n/create_plan <Пункты плана через запятую с пробелом> - Создает новый план\n/add_task <Пункт> - Добавляет пункт в план\n/complete_task <Пункт> - Засчитывает пункт как выполненный\n/delete_task <Пункт> Удаляет пункт из плана\n/print_plan - Выводит план\n/plans - Выводит кол-во выполненных вами планов\n/top10 - Выводит топ-10 по кол-ву выполненных планов\n/review <Отзыв> - Оставляет отзыв")
 @bot.message_handler(commands=['print_plan'])
 def print_plan(message):
      cursor.execute('''SELECT DISTINCT completed_tasks, active_tasks FROM Users WHERE user_id = ?''', (message.from_user.id,))
@@ -128,6 +132,11 @@ def top10(message):
         ans += str(cnt) + '. ' + user[0] + ' - ' + str(user[1]) + '\n'
         cnt += 1
     bot.send_message(message.chat.id, ans)
+@bot.message_handler(commands=['review'])
+def review(message):
+    cursor.execute('''INSERT INTO Reviews(username, review) VALUES (?, ?)''', ('@' + message.from_user.username, message.text[8:]))
+    bot.send_message(message.chat.id, "Ваш отзыв сохранен")
+    bot.send_message(USER_ID, '@' + message.from_user.username + '\n' +  message.text[8:])
 try:
     bot.infinity_polling()
 except KeyboardInterrupt:
